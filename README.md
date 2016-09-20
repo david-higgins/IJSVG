@@ -1,56 +1,5 @@
 IJSVG
 =====
-IJSVG is a Mac OSX 10.7+ COCOA library for rendering SVG's within your COCOA applications, its extremely fast and native.
+This is a Framework project based on [https://github.com/curthard89/IJSVG](https://github.com/curthard89/IJSVG). The `SharpieBindings.cs` file can be used to create a stub dll to use the compiled Framework in a C# project.
 
-Orignaly written for IconJar (in development)
-
-It also supports the NSPasteboards writing protocol, an IJSVG object can be put onto the pasteboard and application like Sketch and Photoshop can paste them into the document as vector objects (generated PDF's on the fly).
-
-Example app
-====
-There is an example application provided, it will generate this test bed for SVG's
-
-The example screen contains six SVG's rendered in individual views, from left to right.
-* First example shows transforms and colours
-* Second example shows linear gradients
-* Third example shows defined paths being reused
-* Forth example shows transforms such as translate being used and stroke colours
-* Fith example shows clip paths being used
-* Sixth example shows dashed stroke array's being used
-
-Quick Start
-====
-Add all the IJSVG library files into your project, import the IJSVG.h into the files you wish to use the SVG's. The easiest way to
-
-#### Step 1 - initialize the SVG object
-    IJSVG * svg = [[IJSVG alloc] initWithFilePathURL:someURLHere];
-    // or with and without extension to find it within the bundle
-    IJSVG * svg = [IJSVG svgNamed:@"my_svg"]; 
-
-#### Step 2 - grab the NSImage from it
-    NSImage * svgImage = [svg imageWithSize:NSMakeSize(100.f,100.f)];
-  
-#Other ways of drawing
-
-IJSVG does allow you to directly draw the SVG into any focused drawing context for example within the drawRect of an NSView...
-
-    - (void)drawRect
-    {
-      [svg drawInRect:self.bounds];
-    }
-    
-# What it supports
-* Elements: def, use, g, path, clipPath, circle, elipse, rect, polyline, polygon and line (supports groups heirachy and inheritance, clip-paths etc)
-* Commands: A, M, L, H, V, C, S, T, Q and Z and full support for multiple parameters of each type
-* Transformations: matrix, rotate (not around a point - currently), translate, scale transformations
-* Stroking: stroking, stroke color, stroke opacity, dashed, dashed offset and phase, stroke line cap style
-* Filling: fill color, fill mode (winding rules), fill opacity, linear gradients, radial gradients
-* Color: supports all predefined colors from the SVG spec and hex values
-* Caching: has basic caching implemenation
-* CSS: Basic embedded style sheets are support with very basic selectors
-* Switches and foreign objects, there is a delegate you can implement to handle foreign objects, once you say you can handle it, its up to you to handle the SVG as IJSVG will stop parsing the document once you have told it you will handle it
-
-## Credit
-IJSVG is loosely based on [UIBezierPath-SVG](https://github.com/ap4y/UIBezierPath-SVG) by [ap4y](https://github.com/ap4y)
-
-SVG icons in example found around the net, some from [Sketch App Resources](http://www.sketchappsources.com/all-svg-resource.html) all open source and free to use
+For more info see: (https://github.com/reincubate/wiki/wiki/Creating-libraries-from-Objective-C-code-for-use-in-C#-on-mac)[https://github.com/reincubate/wiki/wiki/Creating-libraries-from-Objective-C-code-for-use-in-C%23-on-mac]
