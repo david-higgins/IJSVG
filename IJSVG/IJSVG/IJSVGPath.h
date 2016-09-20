@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <Cocoa/Cocoa.h>
 #import "IJSVGBezierPathAdditions.h"
 #import "IJSVGNode.h"
 
