@@ -71,12 +71,16 @@
         // create a new selector if not found
         if((selector = [_selectors objectForKey:selectorName]) == nil) {
             selector = [[[IJSVGStyleSheetSelector alloc] initWithSelectorString:selectorName] autorelease];
-            [_selectors setObject:selector
-                           forKey:selectorName];
+            if(selector != nil) {
+                [_selectors setObject:selector
+                               forKey:selectorName];
+            }
         }
         
         // add it to our list
-        [array addObject:selector];
+        if(selector != nil) {
+            [array addObject:selector];
+        }
     }
     return array;
 }
@@ -167,7 +171,8 @@
         if([rule matchesNode:node selector:&matchedSelector]) {
             
             // make a wrapper for the selector with the rule
-            IJSVGStyleSheetSelectorListItem * listItem = [[[IJSVGStyleSheetSelectorListItem alloc] init] autorelease];
+            IJSVGStyleSheetSelectorListItem * listItem = nil;
+            listItem = [[[IJSVGStyleSheetSelectorListItem alloc] init] autorelease];
             listItem.rule = rule;
             listItem.selector = matchedSelector;
             
@@ -178,7 +183,8 @@
     
     // now we have all the wrappers, we need to sort them
     // by specificity
-    NSSortDescriptor * sort = [NSSortDescriptor sortDescriptorWithKey:@"selector.specificity" ascending:YES];
+    NSSortDescriptor * sort = [NSSortDescriptor sortDescriptorWithKey:@"selector.specificity"
+                                                            ascending:YES];
     [matchedRules sortUsingDescriptors:@[sort]];
     
     // combine the rule

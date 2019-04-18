@@ -9,10 +9,20 @@
 #import "IJSVGCommand.h"
 #import "IJSVGUtils.h"
 
+#import "IJSVGCommandArc.h"
+#import "IJSVGCommandMove.h"
+#import "IJSVGCommandClose.h"
+#import "IJSVGCommandCurve.h"
+#import "IJSVGCommandLineTo.h"
+#import "IJSVGCommandVerticalLine.h"
+#import "IJSVGCommandHorizontalLine.h"
+#import "IJSVGCommandSmoothCurve.h"
+#import "IJSVGCommandQuadraticCurve.h"
+#import "IJSVGCommandCommandSmoothQuadraticCurve.h"
+
 @implementation IJSVGCommand
 
 @synthesize commandString;
-@synthesize string;
 @synthesize command;
 @synthesize parameterCount;
 @synthesize parameters;
@@ -21,12 +31,10 @@
 @synthesize requiredParameters;
 @synthesize type;
 @synthesize previousCommand;
-
-static NSMutableDictionary * _classes = nil;
+@synthesize isSubCommand;
 
 - (void)dealloc
 {
-    [string release], string = nil;
     [commandString release], commandString = nil;
     [command release], command = nil;
     [subCommands release], subCommands = nil;
@@ -40,12 +48,10 @@ static NSMutableDictionary * _classes = nil;
     {
         // work out the basics
         _currentIndex = 0;
-        subCommands = [[NSMutableArray alloc] init];
         command = [[str substringToIndex:1] copy];
         type = [IJSVGUtils typeForCommandString:self.command];
-        commandClass = [[self class] commandClassForCommandLetter:self.command];
-        parameters = [IJSVGUtils commandParameters:str
-                                             count:&parameterCount];
+        commandClass = [[self class] commandClassForCommandChar:[self.command characterAtIndex:0]];
+        parameters = [IJSVGUtils commandParameters:str count:&parameterCount];
         requiredParameters = [self.commandClass requiredParameterCount];
         
         // now work out the sets of parameters we have
@@ -53,36 +59,32 @@ static NSMutableDictionary * _classes = nil;
         // if there is a multiple of commands in a command
         // then we need to work those out...
         NSInteger sets = 1;
-        if( self.requiredParameters != 0 )
+        if( self.requiredParameters != 0 ) {
             sets = self.parameterCount/self.requiredParameters;
+        }
+        
+        subCommands = [[NSMutableArray alloc] initWithCapacity:sets];
         
         // interate over the sets
-        for( NSInteger i = 0; i < sets; i++ )
-        {
-            NSMutableString * cs = [[[NSMutableString alloc] init] autorelease];
-            [cs appendString:self.command];
-            
+        for( NSInteger i = 0; i < sets; i++ ) {
             // memory for this will be handled by the created subcommand
             CGFloat * subParams = 0;
-            if( self.requiredParameters != 0 )
-            {
+            if( self.requiredParameters != 0 ) {
                 subParams = (CGFloat*)malloc(self.requiredParameters*sizeof(CGFloat));
-                for( NSInteger p = 0; p < self.requiredParameters; p++ )
-                {
+                for( NSInteger p = 0; p < self.requiredParameters; p++ ) {
                     subParams[p] = self.parameters[i*self.requiredParameters+p];
-                    [cs appendFormat:@"%f ",subParams[p]];
                 }
             }
             
             // create a subcommand per set
             IJSVGCommand * c = [[[[self class] alloc] init] autorelease];
-            c.string = cs;
             c.parameterCount = self.requiredParameters;
             c.parameters = subParams;
             c.type = self.type;
             c.command = self.command;
-            c.previousCommand = [self.subCommands lastObject];
+            c.previousCommand = self.subCommands.lastObject;
             c.commandClass = self.commandClass;
+            c.isSubCommand = i == 0 ? NO : YES;
             
             // add it to our tree
             [self.subCommands addObject:c];
@@ -97,33 +99,27 @@ static NSMutableDictionary * _classes = nil;
     return NSMakePoint( pairs[index*2], pairs[index*2+1]);
 }
 
-+ (void)registerClass:(Class)aClass
-           forCommand:(NSString *)command
-{
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        _classes = [[NSMutableDictionary alloc] init];
-    });
-    [_classes setObject:NSStringFromClass(aClass)
-                 forKey:command];
-}
-
-+ (NSDictionary *)registeredCommandClasses
-{
-    return _classes;
-}
-
 + (void)load
 {
     // register here...
 }
 
-+ (Class<IJSVGCommandProtocol>)commandClassForCommandLetter:(NSString *)str
++ (Class<IJSVGCommandProtocol>)commandClassForCommandChar:(char)aChar
 {
-    NSString * command = nil;
-    if( ( command = [_classes objectForKey:[str lowercaseString]] ) == nil )
-        return nil;
-    return NSClassFromString(command);
+    aChar = tolower(aChar);
+    switch(aChar) {
+        case 'a': return IJSVGCommandArc.class;
+        case 'c': return IJSVGCommandCurve.class;
+        case 'h': return IJSVGCommandHorizontalLine.class;
+        case 'l': return IJSVGCommandLineTo.class;
+        case 'm': return IJSVGCommandMove.class;
+        case 'q': return IJSVGCommandQuadraticCurve.class;
+        case 's': return IJSVGCommandSmoothCurve.class;
+        case 't': return IJSVGCommandCommandSmoothQuadraticCurve.class;
+        case 'v': return IJSVGCommandVerticalLine.class;
+        case 'z': return IJSVGCommandClose.class;
+    }
+    return nil;
 }
 
 - (CGFloat)readFloat

@@ -11,168 +11,198 @@
 
 @implementation IJSVGColor
 
-static NSMutableDictionary * _colorTree = nil;
+static NSDictionary * _colorTree = nil;
 
+CGFloat * IJSVGColorCSSHSLToHSB(CGFloat hue, CGFloat saturation, CGFloat lightness)
+{
+    hue *= (1.f/360.f);
+    hue = (hue - floorf(hue));
+    saturation *= 0.01;
+    lightness *= 0.01;
+    lightness *= 2.f;
+    
+    CGFloat s = saturation * ((lightness < 1.f) ? lightness : (2.f - lightness));
+    CGFloat brightness = (lightness + s) * .5f;
+    if(s != 0.f) {
+        s = (2.f * s) / (lightness + s);
+    }
+    CGFloat * floats = (CGFloat *)malloc(3*sizeof(CGFloat));
+    floats[0] = hue;
+    floats[1] = s;
+    floats[2] = brightness;
+    return floats;
+};
 
 + (void)load
 {
-    [[self class] _generateTree];
+    [self.class _generateTree];
+}
+
++ (NSColorSpace *)defaultColorSpace
+{
+    return [NSColorSpace deviceRGBColorSpace];
+}
+
++ (NSColor *)computeColorSpace:(NSColor *)color
+{
+    NSColorSpace * space = [self defaultColorSpace];
+    if(color.colorSpace != space) {
+        color = [color colorUsingColorSpace:space];
+    }
+    return color;
 }
 
 + (void)_generateTree
 {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        
-        _colorTree = [[NSMutableDictionary alloc] init];
-        // add the colours in
-        [_colorTree setObject:@"f0f8ff" forKey:@"aliceblue"];
-        [_colorTree setObject:@"faebd7" forKey:@"antiquewhite"];
-        [_colorTree setObject:@"00ffff" forKey:@"aqua"];
-        [_colorTree setObject:@"7fffd4" forKey:@"aquamarine"];
-        [_colorTree setObject:@"f0ffff" forKey:@"azure"];
-        [_colorTree setObject:@"f5f5dc" forKey:@"beige"];
-        [_colorTree setObject:@"ffe4c4" forKey:@"bisque"];
-        [_colorTree setObject:@"000000" forKey:@"black"];
-        [_colorTree setObject:@"ffebcd" forKey:@"blanchedalmond"];
-        [_colorTree setObject:@"0000ff" forKey:@"blue"];
-        [_colorTree setObject:@"8a2be2" forKey:@"blueviolet"];
-        [_colorTree setObject:@"a52a2a" forKey:@"brown"];
-        [_colorTree setObject:@"deb887" forKey:@"burlywood"];
-        [_colorTree setObject:@"5f9ea0" forKey:@"cadetblue"];
-        [_colorTree setObject:@"7fff00" forKey:@"chartreuse"];
-        [_colorTree setObject:@"d2691e" forKey:@"chocolate"];
-        [_colorTree setObject:@"ff7f50" forKey:@"coral"];
-        [_colorTree setObject:@"6495ed" forKey:@"cornflowerblue"];
-        [_colorTree setObject:@"fff8dc" forKey:@"cornsilk"];
-        [_colorTree setObject:@"dc143c" forKey:@"crimson"];
-        [_colorTree setObject:@"00ffff" forKey:@"cyan"];
-        [_colorTree setObject:@"00008b" forKey:@"darkblue"];
-        [_colorTree setObject:@"008b8b" forKey:@"darkcyan"];
-        [_colorTree setObject:@"b8860b" forKey:@"darkgoldenrod"];
-        [_colorTree setObject:@"a9a9a9" forKey:@"darkgray"];
-        [_colorTree setObject:@"006400" forKey:@"darkgreen"];
-        [_colorTree setObject:@"a9a9a9" forKey:@"darkgrey"];
-        [_colorTree setObject:@"bdb76b" forKey:@"darkkhaki"];
-        [_colorTree setObject:@"8b008b" forKey:@"darkmagenta"];
-        [_colorTree setObject:@"556b2f" forKey:@"darkolivegreen"];
-        [_colorTree setObject:@"ff8c00" forKey:@"darkorange"];
-        [_colorTree setObject:@"9932cc" forKey:@"darkorchid"];
-        [_colorTree setObject:@"8b0000" forKey:@"darkred"];
-        [_colorTree setObject:@"e9967a" forKey:@"darksalmon"];
-        [_colorTree setObject:@"8fbc8f" forKey:@"darkseagreen"];
-        [_colorTree setObject:@"483d8b" forKey:@"darkslateblue"];
-        [_colorTree setObject:@"2f4f4f" forKey:@"darkslategray"];
-        [_colorTree setObject:@"2f4f4f" forKey:@"darkslategrey"];
-        [_colorTree setObject:@"00ced1" forKey:@"darkturquoise"];
-        [_colorTree setObject:@"9400d3" forKey:@"darkviolet"];
-        [_colorTree setObject:@"ff1493" forKey:@"deeppink"];
-        [_colorTree setObject:@"00bfff" forKey:@"deepskyblue"];
-        [_colorTree setObject:@"696969" forKey:@"dimgray"];
-        [_colorTree setObject:@"696969" forKey:@"dimgrey"];
-        [_colorTree setObject:@"1e90ff" forKey:@"dodgerblue"];
-        [_colorTree setObject:@"b22222" forKey:@"firebrick"];
-        [_colorTree setObject:@"fffaf0" forKey:@"floralwhite"];
-        [_colorTree setObject:@"228b22" forKey:@"forestgreen"];
-        [_colorTree setObject:@"ff00ff" forKey:@"fuchsia"];
-        [_colorTree setObject:@"dcdcdc" forKey:@"gainsboro"];
-        [_colorTree setObject:@"f8f8ff" forKey:@"ghostwhite"];
-        [_colorTree setObject:@"ffd700" forKey:@"gold"];
-        [_colorTree setObject:@"daa520" forKey:@"goldenrod"];
-        [_colorTree setObject:@"808080" forKey:@"gray"];
-        [_colorTree setObject:@"008000" forKey:@"green"];
-        [_colorTree setObject:@"adff2f" forKey:@"greenyellow"];
-        [_colorTree setObject:@"808080" forKey:@"grey"];
-        [_colorTree setObject:@"f0fff0" forKey:@"honeydew"];
-        [_colorTree setObject:@"ff69b4" forKey:@"hotpink"];
-        [_colorTree setObject:@"cd5c5c" forKey:@"indianred"];
-        [_colorTree setObject:@"4b0082" forKey:@"indigo"];
-        [_colorTree setObject:@"fffff0" forKey:@"ivory"];
-        [_colorTree setObject:@"f0e68c" forKey:@"khaki"];
-        [_colorTree setObject:@"e6e6fa" forKey:@"lavender"];
-        [_colorTree setObject:@"fff0f5" forKey:@"lavenderblush"];
-        [_colorTree setObject:@"7cfc00" forKey:@"lawngreen"];
-        [_colorTree setObject:@"fffacd" forKey:@"lemonchiffon"];
-        [_colorTree setObject:@"add8e6" forKey:@"lightblue"];
-        [_colorTree setObject:@"f08080" forKey:@"lightcoral"];
-        [_colorTree setObject:@"e0ffff" forKey:@"lightcyan"];
-        [_colorTree setObject:@"fafad2" forKey:@"lightgoldenrodyellow"];
-        [_colorTree setObject:@"d3d3d3" forKey:@"lightgray"];
-        [_colorTree setObject:@"90ee90" forKey:@"lightgreen"];
-        [_colorTree setObject:@"d3d3d3" forKey:@"lightgrey"];
-        [_colorTree setObject:@"ffb6c1" forKey:@"lightpink"];
-        [_colorTree setObject:@"ffa07a" forKey:@"lightsalmon"];
-        [_colorTree setObject:@"20b2aa" forKey:@"lightseagreen"];
-        [_colorTree setObject:@"87cefa" forKey:@"lightskyblue"];
-        [_colorTree setObject:@"778899" forKey:@"lightslategray"];
-        [_colorTree setObject:@"778899" forKey:@"lightslategrey"];
-        [_colorTree setObject:@"b0c4de" forKey:@"lightsteelblue"];
-        [_colorTree setObject:@"ffffe0" forKey:@"lightyellow"];
-        [_colorTree setObject:@"00ff00" forKey:@"lime"];
-        [_colorTree setObject:@"32cd32" forKey:@"limegreen"];
-        [_colorTree setObject:@"faf0e6" forKey:@"linen"];
-        [_colorTree setObject:@"ff00ff" forKey:@"magenta"];
-        [_colorTree setObject:@"800000" forKey:@"maroon"];
-        [_colorTree setObject:@"66cdaa" forKey:@"mediumaquamarine"];
-        [_colorTree setObject:@"0000cd" forKey:@"mediumblue"];
-        [_colorTree setObject:@"ba55d3" forKey:@"mediumorchid"];
-        [_colorTree setObject:@"9370db" forKey:@"mediumpurple"];
-        [_colorTree setObject:@"3cb371" forKey:@"mediumseagreen"];
-        [_colorTree setObject:@"7b68ee" forKey:@"mediumslateblue"];
-        [_colorTree setObject:@"00fa9a" forKey:@"mediumspringgreen"];
-        [_colorTree setObject:@"48d1cc" forKey:@"mediumturquoise"];
-        [_colorTree setObject:@"c71585" forKey:@"mediumvioletred"];
-        [_colorTree setObject:@"191970" forKey:@"midnightblue"];
-        [_colorTree setObject:@"f5fffa" forKey:@"mintcream"];
-        [_colorTree setObject:@"ffe4e1" forKey:@"mistyrose"];
-        [_colorTree setObject:@"ffe4b5" forKey:@"moccasin"];
-        [_colorTree setObject:@"ffdead" forKey:@"navajowhite"];
-        [_colorTree setObject:@"000080" forKey:@"navy"];
-        [_colorTree setObject:@"fdf5e6" forKey:@"oldlace"];
-        [_colorTree setObject:@"808000" forKey:@"olive"];
-        [_colorTree setObject:@"6b8e23" forKey:@"olivedrab"];
-        [_colorTree setObject:@"ffa500" forKey:@"orange"];
-        [_colorTree setObject:@"ff4500" forKey:@"orangered"];
-        [_colorTree setObject:@"da70d6" forKey:@"orchid"];
-        [_colorTree setObject:@"eee8aa" forKey:@"palegoldenrod"];
-        [_colorTree setObject:@"98fb98" forKey:@"palegreen"];
-        [_colorTree setObject:@"afeeee" forKey:@"paleturquoise"];
-        [_colorTree setObject:@"db7093" forKey:@"palevioletred"];
-        [_colorTree setObject:@"ffefd5" forKey:@"papayawhip"];
-        [_colorTree setObject:@"ffdab9" forKey:@"peachpuff"];
-        [_colorTree setObject:@"cd853f" forKey:@"peru"];
-        [_colorTree setObject:@"ffc0cb" forKey:@"pink"];
-        [_colorTree setObject:@"dda0dd" forKey:@"plum"];
-        [_colorTree setObject:@"b0e0e6" forKey:@"powderblue"];
-        [_colorTree setObject:@"800080" forKey:@"purple"];
-        [_colorTree setObject:@"ff0000" forKey:@"red"];
-        [_colorTree setObject:@"bc8f8f" forKey:@"rosybrown"];
-        [_colorTree setObject:@"4169e1" forKey:@"royalblue"];
-        [_colorTree setObject:@"8b4513" forKey:@"saddlebrown"];
-        [_colorTree setObject:@"fa8072" forKey:@"salmon"];
-        [_colorTree setObject:@"f4a460" forKey:@"sandybrown"];
-        [_colorTree setObject:@"2e8b57" forKey:@"seagreen"];
-        [_colorTree setObject:@"fff5ee" forKey:@"seashell"];
-        [_colorTree setObject:@"a0522d" forKey:@"sienna"];
-        [_colorTree setObject:@"c0c0c0" forKey:@"silver"];
-        [_colorTree setObject:@"87ceeb" forKey:@"skyblue"];
-        [_colorTree setObject:@"6a5acd" forKey:@"slateblue"];
-        [_colorTree setObject:@"708090" forKey:@"slategray"];
-        [_colorTree setObject:@"708090" forKey:@"slategrey"];
-        [_colorTree setObject:@"fffafa" forKey:@"snow"];
-        [_colorTree setObject:@"00ff7f" forKey:@"springgreen"];
-        [_colorTree setObject:@"4682b4" forKey:@"steelblue"];
-        [_colorTree setObject:@"d2b48c" forKey:@"tan"];
-        [_colorTree setObject:@"008080" forKey:@"teal"];
-        [_colorTree setObject:@"d8bfd8" forKey:@"thistle"];
-        [_colorTree setObject:@"ff6347" forKey:@"tomato"];
-        [_colorTree setObject:@"40e0d0" forKey:@"turquoise"];
-        [_colorTree setObject:@"ee82ee" forKey:@"violet"];
-        [_colorTree setObject:@"f5deb3" forKey:@"wheat"];
-        [_colorTree setObject:@"ffffff" forKey:@"white"];
-        [_colorTree setObject:@"f5f5f5" forKey:@"whitesmoke"];
-        [_colorTree setObject:@"ffff00" forKey:@"yellow"];
-        [_colorTree setObject:@"9acd32" forKey:@"yellowgreen"];
+        _colorTree = [@{
+            @"aliceblue":@(0xf0f8ff),
+            @"antiquewhite":@(0xfaebd7),
+            @"aqua":@(0x00ffff),
+            @"aquamarine":@(0x7fffd4),
+            @"azure":@(0xf0ffff),
+            @"beige":@(0xf5f5dc),
+            @"bisque":@(0xffe4c4),
+            @"black":@(0x000000),
+            @"blanchedalmond":@(0xffebcd),
+            @"blue":@(0x0000ff),
+            @"blueviolet":@(0x8a2be2),
+            @"brown":@(0xa52a2a),
+            @"burlywood":@(0xdeb887),
+            @"cadetblue":@(0x5f9ea0),
+            @"chartreuse":@(0x7fff00),
+            @"chocolate":@(0xd2691e),
+            @"coral":@(0xff7f50),
+            @"cornflowerblue":@(0x6495ed),
+            @"cornsilk":@(0xfff8dc),
+            @"crimson":@(0xdc143c),
+            @"currentcolor":@(0x000000),
+            @"cyan":@(0x00ffff),
+            @"darkblue":@(0x00008b),
+            @"darkcyan":@(0x008b8b),
+            @"darkgoldenrod":@(0xb8860b),
+            @"darkgray":@(0xa9a9a9),
+            @"darkgreen":@(0x006400),
+            @"darkgrey":@(0xa9a9a9),
+            @"darkkhaki":@(0xbdb76b),
+            @"darkmagenta":@(0x8b008b),
+            @"darkolivegreen":@(0x556b2f),
+            @"darkorange":@(0xff8c00),
+            @"darkorchid":@(0x9932cc),
+            @"darkred":@(0x8b0000),
+            @"darksalmon":@(0xe9967a),
+            @"darkseagreen":@(0x8fbc8f),
+            @"darkslateblue":@(0x483d8b),
+            @"darkslategray":@(0x2f4f4f),
+            @"darkturquoise":@(0x00ced1),
+            @"darkviolet":@(0x9400d3),
+            @"deeppink":@(0xff1493),
+            @"deepskyblue":@(0x00bfff),
+            @"dimgray":@(0x696969),
+            @"dimgrey":@(0x696969),
+            @"dodgerblue":@(0x1e90ff),
+            @"firebrick":@(0xb22222),
+            @"floralwhite":@(0xfffaf0),
+            @"forestgreen":@(0x228b22),
+            @"fuchsia":@(0xff00ff),
+            @"gainsboro":@(0xdcdcdc),
+            @"ghostwhite":@(0xf8f8ff),
+            @"gold":@(0xffd700),
+            @"goldenrod":@(0xdaa520),
+            @"gray":@(0x808080),
+            @"green":@(0x008000),
+            @"greenyellow":@(0xadff2f),
+            @"grey":@(0x808080),
+            @"honeydew":@(0xf0fff0),
+            @"hotpink":@(0xff69b4),
+            @"indianred":@(0xcd5c5c),
+            @"indigo":@(0x4b0082),
+            @"ivory":@(0xfffff0),
+            @"khaki":@(0xf0e68c),
+            @"lavender":@(0xe6e6fa),
+            @"lavenderblush":@(0xfff0f5),
+            @"lawngreen":@(0x7cfc00),
+            @"lemonchiffon":@(0xfffacd),
+            @"lightblue":@(0xadd8e6),
+            @"lightcoral":@(0xf08080),
+            @"lightcyan":@(0xe0ffff),
+            @"lightgoldenrodyellow":@(0xfafad2),
+            @"lightgray":@(0xd3d3d3),
+            @"lightgreen":@(0x90ee90),
+            @"lightgrey":@(0xd3d3d3),
+            @"lightpink":@(0xffb6c1),
+            @"lightsalmon":@(0xffa07a),
+            @"lightseagreen":@(0x20b2aa),
+            @"lightskyblue":@(0x87cefa),
+            @"lightslategray":@(0x778899),
+            @"lightsteelblue":@(0xb0c4de),
+            @"lightyellow":@(0xffffe0),
+            @"lime":@(0x00ff00),
+            @"limegreen":@(0x32cd32),
+            @"linen":@(0xfaf0e6),
+            @"magenta":@(0xff00ff),
+            @"maroon":@(0x800000),
+            @"mediumaquamarine":@(0x66cdaa),
+            @"mediumblue":@(0x0000cd),
+            @"mediumorchid":@(0xba55d3),
+            @"mediumpurple":@(0x9370db),
+            @"mediumseagreen":@(0x3cb371),
+            @"mediumslateblue":@(0x7b68ee),
+            @"mediumspringgreen":@(0x00fa9a),
+            @"mediumturquoise":@(0x48d1cc),
+            @"mediumvioletred":@(0xc71585),
+            @"midnightblue":@(0x191970),
+            @"mintcream":@(0xf5fffa),
+            @"mistyrose":@(0xffe4e1),
+            @"moccasin":@(0xffe4b5),
+            @"navajowhite":@(0xffdead),
+            @"navy":@(0x000080),
+            @"oldlace":@(0xfdf5e6),
+            @"olive":@(0x808000),
+            @"olivedrab":@(0x6b8e23),
+            @"orange":@(0xffa500),
+            @"orangered":@(0xff4500),
+            @"orchid":@(0xda70d6),
+            @"palegoldenrod":@(0xeee8aa),
+            @"palegreen":@(0x98fb98),
+            @"paleturquoise":@(0xafeeee),
+            @"palevioletred":@(0xdb7093),
+            @"papayawhip":@(0xffefd5),
+            @"peachpuff":@(0xffdab9),
+            @"peru":@(0xcd853f),
+            @"pink":@(0xffc0cb),
+            @"plum":@(0xdda0dd),
+            @"powderblue":@(0xb0e0e6),
+            @"purple":@(0x800080),
+            @"red":@(0xff0000),
+            @"rosybrown":@(0xbc8f8f),
+            @"royalblue":@(0x4169e1),
+            @"saddlebrown":@(0x8b4513),
+            @"salmon":@(0xfa8072),
+            @"sandybrown":@(0xf4a460),
+            @"seagreen":@(0x2e8b57),
+            @"seashell":@(0xfff5ee),
+            @"sienna":@(0xa0522d),
+            @"silver":@(0xc0c0c0),
+            @"skyblue":@(0x87ceeb),
+            @"slateblue":@(0x6a5acd),
+            @"slategrey":@(0x708090),
+            @"snow":@(0xfffafa),
+            @"springgreen":@(0x00ff7f),
+            @"steelblue":@(0x4682b4),
+            @"tan":@(0xd2b48c),
+            @"teal":@(0x008080),
+            @"thistle":@(0xd8bfd8),
+            @"tomato":@(0xff6347),
+            @"turquoise":@(0x40e0d0),
+            @"violet":@(0xee82ee),
+            @"wheat":@(0xf5deb3),
+            @"white":@(0xffffff),
+            @"whitesmoke":@(0xf5f5f5),
+            @"yellow":@(0xffff00),
+            @"yellowgreen":@(0x9acd32)
+        } retain];
     });
 }
 
@@ -185,47 +215,125 @@ static NSMutableDictionary * _colorTree = nil;
 
 + (NSColor *)colorFromString:(NSString *)string
 {
-    if( [string length] < 3 )
-        return nil;
- 
-    string = [string lowercaseString];
-    NSColor * color = [[self class] colorFromPredefinedColorName:string];
-    if( color != nil )
-        return color;
+    NSCharacterSet * set = NSCharacterSet.whitespaceAndNewlineCharacterSet;
+    string = [string stringByTrimmingCharactersInSet:set];
     
-    if( [[string lowercaseString] isEqualToString:@"none"] )
+    if( [string length] < 3 ) {
+        return nil;
+    }
+ 
+    NSColor * color = nil;
+    string = [string lowercaseString];
+    if([self.class isHex:string] == NO) {
+        color = [self.class colorFromPredefinedColorName:string];
+        if( color != nil ) {
+            return color;
+        }
+    }
+    
+    if( [[string lowercaseString] isEqualToString:@"none"] ) {
         return [NSColor clearColor];
+    }
     
     // is it RGB?
-    if( [[string substringToIndex:3] isEqualToString:@"rgb"] )
-    {
+    if( [[string substringToIndex:3] isEqualToString:@"rgb"] ) {
         NSInteger count = 0;
         CGFloat * params = [IJSVGUtils commandParameters:string
                                                    count:&count];
         CGFloat alpha = 1;
-        if( count == 4 )
+        if( count == 4 ) {
             alpha = params[3];
-        color = [NSColor colorWithCalibratedRed:params[0]/255
-                                        green:params[1]/255
-                                         blue:params[2]/255
-                                        alpha:alpha];
+        }
+        color = [NSColor colorWithDeviceRed:params[0]/255.f
+                                      green:params[1]/255.f
+                                       blue:params[2]/255.f
+                                      alpha:alpha];
         free(params);
         return color;
     }
     
-    color = [[self class] colorFromHEXString:string
-                                       alpha:1.f];
+    // is it HSL?
+    if([[string substringToIndex:3] isEqualToString:@"hsl"]) {
+        NSInteger count = 0;
+        CGFloat * params = [IJSVGUtils commandParameters:string
+                                                   count:&count];
+        CGFloat alpha = 1;
+        if(count == 4) {
+            alpha = params[3];
+        }
+        
+        // convert HSL to HSB
+        CGFloat * hsb = IJSVGColorCSSHSLToHSB(params[0], params[1], params[2]);
+        color = [NSColor colorWithDeviceHue:hsb[0]
+                                 saturation:hsb[1]
+                                 brightness:hsb[2]
+                                      alpha:alpha];
+        
+        // memory clean!
+        free(hsb);
+        free(params);
+        return color;
+    }
+    
+    color = [self.class colorFromHEXString:string alpha:1.f];
     return color;
 }
 
 + (NSColor *)colorFromPredefinedColorName:(NSString *)name
 {
-    NSString * hex = nil;
+    NSNumber * hex = nil;
     name = [name.lowercaseString stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if( ( hex = [_colorTree objectForKey:name] ) == nil )
+    if((hex = _colorTree[name]) == nil ) {
         return nil;
-    return [[self class] colorFromHEXString:hex
-                                      alpha:1.f];
+    }
+    return [self.class colorFromHEXInteger:hex.integerValue];
+}
+
++ (NSString *)colorStringFromColor:(NSColor *)color
+{
+    return [self colorStringFromColor:color
+                             forceHex:NO
+                       allowShorthand:YES];
+}
+
++ (NSString *)colorStringFromColor:(NSColor *)color
+                          forceHex:(BOOL)forceHex
+                    allowShorthand:(BOOL)allowShorthand
+{
+    // convert to RGB
+    color = [self computeColorSpace:color];
+    
+    int red = color.redComponent * 0xFF;
+    int green = color.greenComponent * 0xFF;
+    int blue = color.blueComponent * 0xFF;
+    int alpha = (int)(color.alphaComponent*100);
+    
+    // jsut return none
+    if(alpha == 0 && forceHex == NO) {
+        return @"none";
+    }
+    
+    // always return hex unless criteria is met
+    if(forceHex || alpha == 100 ||
+       (red == 0 && green == 0 && blue == 0 && alpha == 0) ||
+       (red == 255 && green == 255 && blue == 255 && alpha == 100)) {
+        if(allowShorthand == YES) {
+            NSString * r = [NSString stringWithFormat:@"%02X",red];
+            NSString * g = [NSString stringWithFormat:@"%02X",green];
+            NSString * b = [NSString stringWithFormat:@"%02X",blue];
+            if([r characterAtIndex:0] == [r characterAtIndex:1] &&
+               [g characterAtIndex:0] == [g characterAtIndex:1] &&
+               [b characterAtIndex:0] == [b characterAtIndex:1]) {
+                return [NSString stringWithFormat:@"#%c%c%c",[r characterAtIndex:0],
+                        [g characterAtIndex:0],[b characterAtIndex:0]];
+            }
+        }
+        return [NSString stringWithFormat:@"#%02X%02X%02X",red,green,blue];
+    }
+    
+    // note the %g, CSS alpha is 0 to 1, not 0 - 100, my bad!
+    return [NSString stringWithFormat:@"rgba(%d,%d,%d,%g)",red, green, blue,
+            ((float)alpha/100.f)];
 }
 
 + (NSString *)colorNameFromPredefinedColor:(IJSVGPredefinedColor)color
@@ -533,29 +641,44 @@ static NSMutableDictionary * _colorTree = nil;
 + (NSColor *)changeAlphaOnColor:(NSColor *)color
                              to:(CGFloat)alphaValue
 {
-    color = [color colorUsingColorSpace:[NSColorSpace deviceRGBColorSpace]];
-    return [NSColor colorWithCalibratedRed:[color redComponent]
-                                     green:[color greenComponent]
-                                      blue:[color blueComponent]
-                                     alpha:alphaValue];
+    color = [self computeColorSpace:color];
+    return [NSColor colorWithDeviceRed:[color redComponent]
+                                 green:[color greenComponent]
+                                  blue:[color blueComponent]
+                                 alpha:alphaValue];
 }
 
 + (BOOL)isColor:(NSString *)string
 {
-    return [[string substringToIndex:1] isEqualToString:@"#"] || [[string substringToIndex:3] isEqualToString:@"rgb"];
+    return [[string substringToIndex:1] isEqualToString:@"#"] ||
+    [[string substringToIndex:3] isEqualToString:@"rgb"];
 }
 
 + (BOOL)isHex:(NSString *)string
 {
-    NSCharacterSet *chars = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789ABCDEFabcdef#"] invertedSet];
-    return [string rangeOfCharacterFromSet:chars].location == NSNotFound;
+    const char * validList = "0123456789ABCDEFabcdef#";
+    for(NSInteger i = 0; i < string.length; i++) {
+        char c = [string characterAtIndex:i];
+        if(strchr(validList, c) == NULL) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
++ (NSColor *)colorFromHEXInteger:(NSInteger)hex
+{
+    return [NSColor colorWithDeviceRed:((hex >> 16) & 0xFF) / 255.f
+                                 green:((hex >> 6) & 0xFF) / 255.f
+                                  blue:(hex & 0xFF) / 255.f
+                                 alpha:1.f];
 }
 
 + (NSColor *)colorFromHEXString:(NSString *)string
                           alpha:(CGFloat)alpha
 {
     // absolutely no string
-    if( string == nil || string.length == 0 || ![[self class] isHex:string] )
+    if( string == nil || string.length == 0 || ![self.class isHex:string] )
         return nil;
     
     if( [[string substringToIndex:1] isEqualToString:@"#"] )
@@ -573,19 +696,12 @@ static NSMutableDictionary * _colorTree = nil;
         string = str;
     }
     
-    NSScanner * scanner = [NSScanner scannerWithString:string];
-    unsigned int hex;
-    if( [scanner scanHexInt:&hex] )
-    {
-        NSInteger r = (hex>>16) & 0xFF;
-        NSInteger g = (hex>>8) & 0xFF;
-        NSInteger b = (hex) & 0xFF;
-        return [NSColor colorWithCalibratedRed:r/255.f
-                                         green:g/255.f
-                                          blue:b/255.f
-                                         alpha:alpha];
-    }
-    return nil;
+    const char * hexString = [string cStringUsingEncoding:NSUTF8StringEncoding];
+    unsigned long hex = strtoul(hexString, NULL, 16);
+    return [NSColor colorWithDeviceRed:((hex>>16) & 0xFF)/255.f
+                                 green:((hex>>8) & 0xFF)/255.f
+                                  blue:(hex & 0xFF)/255.f
+                                 alpha:alpha];
 }
 
 @end
