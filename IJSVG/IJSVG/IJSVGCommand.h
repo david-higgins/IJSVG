@@ -32,7 +32,6 @@ typedef NS_ENUM( NSInteger, IJSVGCommandType ) {
 
 @interface IJSVGCommand : NSObject {
     NSString * commandString;
-    NSString * string;
     NSString * command;
     CGFloat * parameters;
     NSInteger parameterCount;
@@ -42,9 +41,9 @@ typedef NS_ENUM( NSInteger, IJSVGCommandType ) {
     IJSVGCommand * previousCommand;
     NSInteger _currentIndex;
     Class<IJSVGCommandProtocol> commandClass;
+    BOOL isSubCommand;
 }
 
-@property ( nonatomic, copy ) NSString * string;
 @property ( nonatomic, copy ) NSString * commandString;
 @property ( nonatomic, copy ) NSString * command;
 @property ( nonatomic, assign ) CGFloat * parameters;
@@ -54,16 +53,12 @@ typedef NS_ENUM( NSInteger, IJSVGCommandType ) {
 @property ( nonatomic, retain ) NSMutableArray * subCommands;
 @property ( nonatomic, assign ) Class<IJSVGCommandProtocol> commandClass;
 @property ( nonatomic, assign ) IJSVGCommand * previousCommand;
+@property ( nonatomic, assign ) BOOL isSubCommand;
 
 - (id)initWithCommandString:(NSString *)commandString;
 
 + (NSPoint)readCoordinatePair:(CGFloat *)pairs
                         index:(NSInteger)index;
-
-+ (void)registerClass:(Class)aClass
-           forCommand:(NSString *)command;
-+ (NSDictionary *)registeredCommandClasses;
-+ (Class<IJSVGCommandProtocol>)commandClassForCommandLetter:(NSString *)str;
 
 - (CGFloat)readFloat;
 - (NSPoint)readPoint;
