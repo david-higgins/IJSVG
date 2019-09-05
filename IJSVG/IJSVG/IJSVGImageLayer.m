@@ -6,20 +6,16 @@
 //  Copyright © 2017 Curtis Hard. All rights reserved.
 //
 
-#import <Cocoa/Cocoa.h>
 #import "IJSVGImageLayer.h"
+#import <Cocoa/Cocoa.h>
 
 @implementation IJSVGImageLayer
 
 - (id)initWithImage:(NSImage *)image
 {
-    
-    NSImageRep *rep = [[image representations] objectAtIndex:0];
-    
     NSRect rect = (NSRect){
         .origin = NSZeroPoint,
-        // TODO, George: size cannot be found in forward class object 'NSImage'
-        .size = NSMakeSize(rep.pixelsWide, rep.pixelsHigh)
+        .size = image.size
     };
     CGImageRef ref = [image CGImageForProposedRect:&rect
                                            context:nil

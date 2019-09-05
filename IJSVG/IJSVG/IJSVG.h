@@ -1,14 +1,4 @@
-
 #import <Cocoa/Cocoa.h>
-
-//! Project version number for IJSVG.
-FOUNDATION_EXPORT double IJSVGVersionNumber;
-
-//! Project version string for IJSVG.
-FOUNDATION_EXPORT const unsigned char IJSVGVersionString[];
-
-// In this header, you should import all the public headers of your framework using statements like #import <IJSVG/PublicHeader.h>
-
 
 //
 //  IJSVGImage.h
@@ -152,6 +142,9 @@ withSVGString:(NSString *)subSVGString;
                      error:(NSError **)error;
 - (NSImage *)imageWithSize:(NSSize)aSize
                    flipped:(BOOL)flipped;
+- (NSImage *)imageByMaintainingAspectRatioWithSize:(NSSize)aSize
+                                           flipped:(BOOL)flipped
+                                             error:(NSError **)error;
 - (BOOL)drawAtPoint:(NSPoint)point
                size:(NSSize)size;
 - (BOOL)drawAtPoint:(NSPoint)point
