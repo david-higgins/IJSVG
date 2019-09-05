@@ -13,73 +13,88 @@
 
 + (NSGradient *)parseGradient:(NSXMLElement *)element
                      gradient:(IJSVGLinearGradient *)aGradient
-                   startPoint:(CGPoint *)startPoint
-                     endPoint:(CGPoint *)endPoint
 {
     
-    // assume its a vertical / horizonal
-    aGradient.x1 = IJSVGUnitFromString([[element attributeForName:@"x1"] stringValue]);
-    aGradient.x2 = IJSVGUnitFromString([[element attributeForName:@"x2"] stringValue]);
-    aGradient.y1 = IJSVGUnitFromString([[element attributeForName:@"y1"] stringValue]);
-    aGradient.y2 = IJSVGUnitFromString([[element attributeForName:@"y2"] stringValue]);
-//    
-//    *startPoint = CGPointMake(x1, y1);
-//    *endPoint = CGPointMake(x2, y2);
-//    
-//    // horizontal
-//    if( y1 == y2 && x1 != x2 )
-//        aGradient.angle = 0.f;
-//    
-//    // vertical
-//    else if( x1 == x2 && y1 != y2 )
-//        aGradient.angle = 270.f;
-//    
-//    // angles
-//    else if( x1 != x2 && y1 != y2 )
-//        aGradient.angle = [IJSVGUtils angleBetweenPointA:NSMakePoint( x1, y1 )
-//                                                  pointb:NSMakePoint( x2, y2 )];
+    CGFloat px1 = [[element attributeForName:@"x1"] stringValue].floatValue;
+    CGFloat px2 = [[element attributeForName:@"x2"] stringValue].floatValue;
+    CGFloat py1 = [[element attributeForName:@"y1"] stringValue].floatValue;
+    CGFloat py2 = [[element attributeForName:@"y2"] stringValue].floatValue;
     
+    // work out each coord, and work out if its a % or not
+    // annoyingly we need to check them all against each other -_-
+    BOOL isPercent = NO;
+    if((px1 >= 0.f && px1 <= 1.f) && (px2 >= 0.f && px2 <= 1.f) &&
+       (py1 >= 0.f && py1 <= 1.f) && (py2 >= 0.f && py2 <= 1.f)) {
+        isPercent = YES;
+    }
+    
+    // assume its a vertical / horizonal
+    if(isPercent == NO) {
+        // just ask unit for the value
+        aGradient.x1 = [IJSVGGradientUnitLength unitWithString:[[element attributeForName:@"x1"] stringValue] ?: @"0"];
+        aGradient.x2 = [IJSVGGradientUnitLength unitWithString:[[element attributeForName:@"x2"] stringValue] ?: @"100"];
+        aGradient.y1 = [IJSVGGradientUnitLength unitWithString:[[element attributeForName:@"y1"] stringValue] ?: @"0"];
+        aGradient.y2 = [IJSVGGradientUnitLength unitWithString:[[element attributeForName:@"y2"] stringValue] ?: @"0"];
+    } else {
+        // make sure its a percent!
+        aGradient.x1 = [IJSVGGradientUnitLength unitWithPercentageString:[[element attributeForName:@"x1"] stringValue] ?: @"0"];
+        aGradient.x2 = [IJSVGGradientUnitLength unitWithPercentageString:[[element attributeForName:@"x2"] stringValue] ?: @"1"];
+        aGradient.y1 = [IJSVGGradientUnitLength unitWithPercentageString:[[element attributeForName:@"y1"] stringValue] ?: @"0"];
+        aGradient.y2 = [IJSVGGradientUnitLength unitWithPercentageString:[[element attributeForName:@"y2"] stringValue] ?: @"0"];
+    }
+
     // compute the color stops and colours
     NSArray * colors = nil;
-    CGFloat * stopsParams = [[self class] computeColorStopsFromString:element
+    CGFloat * stopsParams = [self.class computeColorStopsFromString:element
                                                                colors:&colors];
     
     // create the gradient with the colours
-    NSGradient * grad = [[[NSGradient alloc] initWithColors:colors
+    NSGradient * grad = [[NSGradient alloc] initWithColors:colors
                                                atLocations:stopsParams
-                                                colorSpace:[NSColorSpace genericRGBColorSpace]] autorelease];
+                                                colorSpace:IJSVGColor.defaultColorSpace];
     
     free(stopsParams);
-    return grad;
+    return [grad autorelease];
 }
 
 - (void)drawInContextRef:(CGContextRef)ctx
-                    path:(IJSVGPath *)path
+              objectRect:(NSRect)objectRect
+       absoluteTransform:(CGAffineTransform)absoluteTransform
+                viewPort:(CGRect)viewBox
 {
-    // grab the start and end point
-    CGPoint aStartPoint = CGPointMake(IJSVGFloatFromUnit(x1, path, YES), IJSVGFloatFromUnit(y1, path, NO));
-    CGPoint aEndPoint = CGPointMake(IJSVGFloatFromUnit(x2, path, YES), IJSVGFloatFromUnit(y2, path, NO));
+    BOOL inUserSpace = self.units == IJSVGUnitUserSpaceOnUse;
     
-    // convert the nsgradient to a CGGradient
-    CGGradientRef gRef = [self CGGradient];
+    CGPoint gradientStartPoint = CGPointZero;
+    CGPoint gradientEndPoint = CGPointZero;
+    CGAffineTransform absTransform = absoluteTransform;
+    CGAffineTransform selfTransform = IJSVGConcatTransforms(self.transforms);
     
-    // apply transform for each point
-    for( IJSVGTransform * transform in self.transforms ) {
-        CGAffineTransform trans = transform.CGAffineTransform;
-        aStartPoint = CGPointApplyAffineTransform(aStartPoint, trans);
-        aEndPoint = CGPointApplyAffineTransform(aEndPoint, trans);
+    CGRect boundingBox = inUserSpace ? viewBox : objectRect;
+    
+    // make sure we apply the absolute position to
+    // transform us back into the correct space
+    if(inUserSpace == YES) {
+        CGContextConcatCTM(ctx, absTransform);
     }
     
-    // we need to move the context into the path coordinate space - so save the state!
-    CGContextSaveGState(ctx);
-    CGContextTranslateCTM(ctx, path.path.bounds.origin.x, path.path.bounds.origin.y);
+    CGFloat width = CGRectGetWidth(boundingBox);
+    CGFloat height = CGRectGetHeight(boundingBox);
+    gradientStartPoint = CGPointMake([self.x1 computeValue:width],
+                                     [self.y1 computeValue:height]);
+    
+    gradientEndPoint = CGPointMake([self.x2 computeValue:width],
+                                   [self.y2 computeValue:height]);
+
+    // transform the context
+    CGContextConcatCTM(ctx, selfTransform);
     
     // draw the gradient
-    CGGradientDrawingOptions opt = kCGGradientDrawsBeforeStartLocation|kCGGradientDrawsAfterEndLocation;
-    CGContextDrawLinearGradient(ctx, gRef, aStartPoint, aEndPoint, opt);
+    CGGradientDrawingOptions options =
+        kCGGradientDrawsBeforeStartLocation|
+        kCGGradientDrawsAfterEndLocation;
     
-    // restore the state
-    CGContextRestoreGState(ctx);
+    CGContextDrawLinearGradient(ctx, self.CGGradient, gradientStartPoint,
+                                gradientEndPoint, options);
 }
 
 @end
