@@ -10,12 +10,6 @@
 
 @implementation IJSVGCommandLineTo
 
-+ (void)load
-{
-    [IJSVGCommand registerClass:[self class]
-                     forCommand:@"l"];
-}
-
 + (NSInteger)requiredParameterCount
 {
     return 2;
@@ -28,12 +22,11 @@
                  type:(IJSVGCommandType)type
                  path:(IJSVGPath *)path
 {
-    if( type == IJSVGCommandTypeAbsolute )
-    {
+    if( type == IJSVGCommandTypeAbsolute ) {
         [[path currentSubpath] lineToPoint:NSMakePoint( params[0], params[1])];
         return;
     }
-    NSPoint point = NSMakePoint( [path currentSubpath].currentPoint.x + params[0],
+    NSPoint point = NSMakePoint([path currentSubpath].currentPoint.x + params[0],
                                 [path currentSubpath].currentPoint.y + params[1]);
     [[path currentSubpath] lineToPoint:point];
 }
