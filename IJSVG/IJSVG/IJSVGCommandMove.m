@@ -12,12 +12,6 @@
 
 @implementation IJSVGCommandMove
 
-+ (void)load
-{
-    [IJSVGCommand registerClass:[self class]
-                     forCommand:@"m"];
-}
-
 + (NSInteger)requiredParameterCount
 {
     return 2;
@@ -32,8 +26,7 @@
 {
     // move to's allow more then one move to, but if there are more then one,
     // we need to run the line to instead...who knew!
-    if( command.commandClass == [self class])
-    {
+    if( command.commandClass == self.class && currentCommand.isSubCommand == YES) {
         [IJSVGCommandLineTo runWithParams:params
                                paramCount:count
                                   command:currentCommand
@@ -44,8 +37,7 @@
     }
     
     // actual move to command
-    if( type == IJSVGCommandTypeAbsolute )
-    {
+    if( type == IJSVGCommandTypeAbsolute ) {
         [[path currentSubpath] moveToPoint:NSMakePoint( params[0], params[1])];
         return;
     }

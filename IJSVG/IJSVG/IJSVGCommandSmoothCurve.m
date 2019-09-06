@@ -12,12 +12,6 @@
 
 @implementation IJSVGCommandSmoothCurve
 
-+ (void)load
-{
-    [IJSVGCommand registerClass:[self class]
-                     forCommand:@"s"];
-}
-
 + (NSInteger)requiredParameterCount
 {
     return 4;
@@ -33,7 +27,7 @@
     NSPoint firstControl = NSMakePoint( [path currentSubpath].currentPoint.x, [path currentSubpath].currentPoint.y );
     if( command != nil )
     {
-        if( command.commandClass == [IJSVGCommandCurve class] || command.commandClass == [self class] )
+        if( command.commandClass == [IJSVGCommandCurve class] || command.commandClass == self.class )
         {
             if( command.commandClass == [IJSVGCommandCurve class] )
             {
