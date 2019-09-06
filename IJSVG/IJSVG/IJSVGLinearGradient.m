@@ -14,34 +14,15 @@
 + (NSGradient *)parseGradient:(NSXMLElement *)element
                      gradient:(IJSVGLinearGradient *)aGradient
 {
-    
-    CGFloat px1 = [[element attributeForName:@"x1"] stringValue].floatValue;
-    CGFloat px2 = [[element attributeForName:@"x2"] stringValue].floatValue;
-    CGFloat py1 = [[element attributeForName:@"y1"] stringValue].floatValue;
-    CGFloat py2 = [[element attributeForName:@"y2"] stringValue].floatValue;
-    
-    // work out each coord, and work out if its a % or not
-    // annoyingly we need to check them all against each other -_-
-    BOOL isPercent = NO;
-    if((px1 >= 0.f && px1 <= 1.f) && (px2 >= 0.f && px2 <= 1.f) &&
-       (py1 >= 0.f && py1 <= 1.f) && (py2 >= 0.f && py2 <= 1.f)) {
-        isPercent = YES;
-    }
-    
-    // assume its a vertical / horizonal
-    if(isPercent == NO) {
-        // just ask unit for the value
-        aGradient.x1 = [IJSVGGradientUnitLength unitWithString:[[element attributeForName:@"x1"] stringValue] ?: @"0"];
-        aGradient.x2 = [IJSVGGradientUnitLength unitWithString:[[element attributeForName:@"x2"] stringValue] ?: @"100"];
-        aGradient.y1 = [IJSVGGradientUnitLength unitWithString:[[element attributeForName:@"y1"] stringValue] ?: @"0"];
-        aGradient.y2 = [IJSVGGradientUnitLength unitWithString:[[element attributeForName:@"y2"] stringValue] ?: @"0"];
-    } else {
-        // make sure its a percent!
-        aGradient.x1 = [IJSVGGradientUnitLength unitWithPercentageString:[[element attributeForName:@"x1"] stringValue] ?: @"0"];
-        aGradient.x2 = [IJSVGGradientUnitLength unitWithPercentageString:[[element attributeForName:@"x2"] stringValue] ?: @"1"];
-        aGradient.y1 = [IJSVGGradientUnitLength unitWithPercentageString:[[element attributeForName:@"y1"] stringValue] ?: @"0"];
-        aGradient.y2 = [IJSVGGradientUnitLength unitWithPercentageString:[[element attributeForName:@"y2"] stringValue] ?: @"0"];
-    }
+    // just ask unit for the value
+    NSString * x1 = ([element attributeForName:@"x1"].stringValue ?: @"0");
+    NSString * x2 = ([element attributeForName:@"x2"].stringValue ?: @"100%");
+    NSString * y1 = ([element attributeForName:@"y1"].stringValue ?: @"0");
+    NSString * y2 = ([element attributeForName:@"y2"].stringValue ?: @"0");
+    aGradient.x1 = [IJSVGGradientUnitLength unitWithString:x1 fromUnitType:aGradient.units];
+    aGradient.x2 = [IJSVGGradientUnitLength unitWithString:x2 fromUnitType:aGradient.units];
+    aGradient.y1 = [IJSVGGradientUnitLength unitWithString:y1 fromUnitType:aGradient.units];
+    aGradient.y2 = [IJSVGGradientUnitLength unitWithString:y2 fromUnitType:aGradient.units];
 
     // compute the color stops and colours
     NSArray * colors = nil;
@@ -66,7 +47,6 @@
     
     CGPoint gradientStartPoint = CGPointZero;
     CGPoint gradientEndPoint = CGPointZero;
-    CGAffineTransform absTransform = absoluteTransform;
     CGAffineTransform selfTransform = IJSVGConcatTransforms(self.transforms);
     
     CGRect boundingBox = inUserSpace ? viewBox : objectRect;
@@ -74,7 +54,7 @@
     // make sure we apply the absolute position to
     // transform us back into the correct space
     if(inUserSpace == YES) {
-        CGContextConcatCTM(ctx, absTransform);
+        CGContextConcatCTM(ctx, absoluteTransform);
     }
     
     CGFloat width = CGRectGetWidth(boundingBox);
@@ -95,6 +75,12 @@
     
     CGContextDrawLinearGradient(ctx, self.CGGradient, gradientStartPoint,
                                 gradientEndPoint, options);
+    
+#ifdef IJSVG_DEBUG
+    [self _debugStart:gradientStartPoint
+                  end:gradientEndPoint
+              context:ctx];
+#endif
 }
 
 @end

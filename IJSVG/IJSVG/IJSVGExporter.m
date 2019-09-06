@@ -31,6 +31,11 @@
 @synthesize title;
 @synthesize description;
 
+BOOL IJSVGExporterHasOption(IJSVGExporterOptions options, NSInteger option)
+{
+    return (options & option) != 0;
+};
+
 const NSArray * IJSVGShortCharacterArray()
 {
     static NSArray * _array;
@@ -928,6 +933,7 @@ NSString * IJSVGHash(NSString * key) {
     
     // add the stops
     NSGradient * grad = layer.gradient.gradient;
+    IJSVGColorList * sheet = layer.gradient.colorList;
     NSInteger noStops = grad.numberOfColorStops;
     for(NSInteger i = 0; i < noStops; i++) {
         
@@ -937,6 +943,10 @@ NSString * IJSVGHash(NSString * key) {
         [grad getColor:&aColor
               location:&location
                atIndex:i];
+        
+        if(sheet != nil) {
+            aColor = [sheet proposedColorForColor:aColor];
+        }
         
         // create the stop element
         NSXMLElement * stop = [[[NSXMLElement alloc] init] autorelease];

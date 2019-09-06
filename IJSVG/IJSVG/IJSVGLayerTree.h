@@ -8,6 +8,7 @@
 
 #import <QuartzCore/QuartzCore.h>
 #import "IJSVGNode.h"
+#import "IJSVGRenderingStyle.h"
 
 @class IJSVGLayer;
 
@@ -16,12 +17,8 @@
 }
 
 @property (nonatomic, assign) CGRect viewBox;
-@property (nonatomic, retain) NSColor * fillColor;
-@property (nonatomic, retain) NSColor * strokeColor;
-@property (nonatomic, assign) CGFloat strokeWidth;
-@property (nonatomic, assign) IJSVGLineJoinStyle lineJoinStyle;
-@property (nonatomic, assign) IJSVGLineCapStyle lineCapStyle;
-@property (nonatomic, retain) NSDictionary<NSColor *, NSColor *> * replacementColors;
+@property (nonatomic, retain) IJSVGRenderingStyle * style;
+
 
 - (IJSVGLayer *)layerForNode:(IJSVGNode *)node;
 

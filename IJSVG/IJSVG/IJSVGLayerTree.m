@@ -27,26 +27,17 @@
 @implementation IJSVGLayerTree
 
 @synthesize viewBox;
-@synthesize fillColor;
-@synthesize strokeColor;
-@synthesize strokeWidth;
-@synthesize lineJoinStyle;
-@synthesize lineCapStyle;
-@synthesize replacementColors;
+@synthesize style = _style;
 
 - (void)dealloc
 {
-    [fillColor release], fillColor = nil;
-    [strokeColor release], strokeColor = nil;
-    [replacementColors release], replacementColors = nil;
+    [_style release], _style = nil;
     [super dealloc];
 }
 
 - (id)init
 {
     if((self = [super init]) != nil) {
-        self.lineJoinStyle = IJSVGLineJoinStyleNone;
-        self.lineCapStyle = IJSVGLineCapStyleNone;
     }
     return self;
 }
@@ -253,20 +244,15 @@
 {
     CGAffineTransform parentAbsoluteTransform = CGAffineTransformIdentity;
     IJSVGNode * intermediateNode = node.intermediateParentNode;
-    node = node.parentNode;
-    while(node != nil) {
-        // intermediateParent should be skipped as these are elements
-        // created by use statements and are technically fake elements, but the
-        // spec says use them for the transforms, yolo!
+    IJSVGNode * parentSVGNode = node;
+    while((parentSVGNode = parentSVGNode.parentNode) != nil) {
         if(node == intermediateNode) {
-            node = node.parentNode;
             continue;
         }
-        CGAffineTransform trans = IJSVGConcatTransforms(node.transforms);
-        parentAbsoluteTransform = CGAffineTransformConcat(trans,parentAbsoluteTransform);
-        node = node.parentNode;
+        parentAbsoluteTransform = [self absoluteTransform:parentSVGNode];
     }
-    return parentAbsoluteTransform;
+    return CGAffineTransformConcat(IJSVGConcatTransforms(node.transforms),
+                                   parentAbsoluteTransform);
 }
 
 - (IJSVGLayer *)layerForPath:(IJSVGPath *)path
@@ -281,7 +267,7 @@
                       path.strokeGradient != nil);
     
     // any gradient?
-    if(self.fillColor == nil && path.fillGradient != nil) {
+    if(_style.fillColor == nil && path.fillGradient != nil) {
         
         // create the gradient
         IJSVGGradientLayer * gradLayer = [self gradientLayerForLayer:layer
@@ -294,7 +280,7 @@
         [layer addSublayer:gradLayer];
         layer.gradientFillLayer = gradLayer;
         
-    } else if(self.fillColor == nil && path.fillPattern != nil) {
+    } else if(_style.fillColor == nil && path.fillPattern != nil) {
         
         // create the pattern, this is actually not as easy as it may seem
         IJSVGPatternLayer * patternLayer = [self patternLayerForLayer:layer
@@ -316,15 +302,15 @@
         NSColor * fColor = path.fillColor;
         BOOL hasColor = (fColor.alphaComponent == 0.f || fColor == nil) == NO;
         BOOL hasFill = path.fillPattern != nil || path.fillGradient != nil;
-        if(self.fillColor && (hasFill || hasColor || fColor == nil)) {
-            fColor = self.fillColor;
+        if(_style.fillColor && (hasFill || hasColor || fColor == nil)) {
+            fColor = _style.fillColor;
         } else if(fColor != nil && path.fillOpacity.value != 1.f) {
             fColor = [IJSVGColor changeAlphaOnColor:fColor
                                                  to:path.fillOpacity.value];
         }
         
         // anything changed by user?
-        fColor = [self proposedColorForColor:fColor];
+        fColor = [_style.colorList proposedColorForColor:fColor];
         
         // just set the color
         if(fColor != nil) {
@@ -338,7 +324,7 @@
             }
             
             // work out if anything was changed by user
-            NSColor * proposedColor = [self proposedColorForColor:defColor];
+            NSColor * proposedColor = [_style.colorList proposedColorForColor:defColor];
             layer.fillColor = proposedColor.CGColor;
         }
     }
@@ -352,7 +338,7 @@
         
         // reset the node
         BOOL moveStrokeLayer = NO;
-        if(self.strokeColor == nil && path.strokeGradient != nil) {
+        if(_style.strokeColor == nil && path.strokeGradient != nil) {
             
             // force reset of the mask colour as we need to use the stroke layer
             // as the mask for the stroke gradient
@@ -373,7 +359,7 @@
             layer.strokeLayer = strokeLayer;
             layer.gradientStrokeLayer = gradLayer;
             
-        } else if(self.strokeColor == nil && path.strokePattern != nil) {
+        } else if(_style.strokeColor == nil && path.strokePattern != nil) {
             
             // force reset of the mask
             strokeLayer.strokeColor = [IJSVGColor computeColorSpace:NSColor.blackColor].CGColor;
@@ -432,24 +418,6 @@
     return bounds;
 }
 
-- (NSColor *)proposedColorForColor:(NSColor *)color
-{
-    // nothing found, just return color
-    if(replacementColors == nil || replacementColors.count == 0) {
-        return color;
-    }
-    
-    // check the mappings
-    NSColor * found = nil;
-    color = [IJSVGColor computeColorSpace:color];
-    if((found = replacementColors[color]) != nil) {
-        return found;
-    }
-    
-    // nothing :(
-    return color;
-}
-
 - (IJSVGGradientLayer *)gradientStrokeLayerForLayer:(IJSVGShapeLayer *)layer
                                            gradient:(IJSVGGradient *)gradient
                                            fromNode:(IJSVGNode *)path
@@ -477,12 +445,14 @@
                                    shouldMask:(BOOL)shouldMask
 {
     // the gradient drawing layer
+    gradient.colorList = _style.colorList;
     IJSVGGradientLayer * gradLayer = [[[IJSVGGradientLayer alloc] init] autorelease];
     gradLayer.viewBox = self.viewBox;
     gradLayer.frame = layer.bounds;
     gradLayer.gradient = gradient;
     gradLayer.absoluteTransform = [self absoluteTransform:path];
-    gradLayer.objectRect = CGRectApplyAffineTransform(objectRect, gradLayer.absoluteTransform);
+    gradLayer.objectRect = CGRectApplyAffineTransform(objectRect,
+                                                      gradLayer.absoluteTransform);
     
     if(shouldMask == YES) {
         // add the mask
@@ -589,13 +559,13 @@
     // same as fill, dont use global if the alpha is 0.f, but do use it
     // if there is a pattern or gradient
     NSColor * sColor = path.strokeColor;
-    if(self.strokeColor != nil &&
+    if(_style.strokeColor != nil &&
        ((sColor != nil && sColor.alphaComponent != 0.f) ||
             path.strokePattern != nil || path.strokeGradient != nil )) {
-        sColor = self.strokeColor;
+        sColor = _style.strokeColor;
     }
     
-    sColor = [self proposedColorForColor:sColor];
+    sColor = [_style.colorList proposedColorForColor:sColor];
     
     // stroke layer
     IJSVGStrokeLayer * strokeLayer = [[[IJSVGStrokeLayer alloc] init] autorelease];
@@ -604,8 +574,8 @@
     strokeLayer.strokeColor = sColor.CGColor;
     
     CGFloat lineWidth = 1.f;
-    if(self.strokeWidth > 0.f) {
-        lineWidth = self.strokeWidth;
+    if(_style.lineWidth != IJSVGInheritedFloatValue) {
+        lineWidth = _style.lineWidth;
     } else {
         lineWidth = path.strokeWidth.value;
     }
@@ -615,15 +585,15 @@
     IJSVGLineJoinStyle lJoinStyle;
     
     // forced cap style
-    if(self.lineCapStyle != IJSVGLineCapStyleNone) {
-        lCapStyle = self.lineCapStyle;
+    if(_style.lineCapStyle != IJSVGLineCapStyleNone) {
+        lCapStyle = _style.lineCapStyle;
     } else {
         lCapStyle = path.lineCapStyle;
     }
     
     // forced join style
-    if(self.lineJoinStyle != IJSVGLineJoinStyleNone) {
-        lJoinStyle = self.lineJoinStyle;
+    if(_style.lineJoinStyle != IJSVGLineJoinStyleNone) {
+        lJoinStyle = _style.lineJoinStyle;
     } else {
         lJoinStyle = path.lineJoinStyle;
     }

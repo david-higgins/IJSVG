@@ -13,25 +13,20 @@
 
 @implementation IJSVG
 
-@synthesize fillColor;
-@synthesize strokeColor;
-@synthesize strokeWidth;
-@synthesize lineCapStyle;
-@synthesize lineJoinStyle;
 @synthesize renderingBackingScaleHelper;
 @synthesize clipToViewport;
 @synthesize renderQuality;
+@synthesize style = _style;
 
 - (void)dealloc
 {
     IJSVGBeginTransactionLock();
     [renderingBackingScaleHelper release], renderingBackingScaleHelper = nil;
-    [fillColor release], fillColor = nil;
-    [strokeColor release], strokeColor = nil;
     [_group release], _group = nil;
     [_layerTree release], _layerTree = nil;
     [_replacementColors release], _replacementColors = nil;
     [_quartzRenderer release], _quartzRenderer = nil;
+    [_style release], _style = nil;
     [super dealloc];
     IJSVGEndTransactionLock();
 }
@@ -83,7 +78,7 @@
          error:(NSError **)error
       delegate:(id<IJSVGDelegate>)delegate
 {
-    NSBundle * bundle = [NSBundle mainBundle];
+    NSBundle * bundle = NSBundle.mainBundle;
     NSString * str = nil;
     NSString * ext = [string pathExtension];
     if( ext == nil || ext.length == 0 ) {
@@ -338,6 +333,7 @@
 
 - (void)_setupBasicsFromAnyInitializer
 {
+    self.style = [[[IJSVGRenderingStyle alloc] init] autorelease];
     self.clipToViewport = YES;
     self.renderQuality = IJSVGRenderQualityFullResolution;
     
@@ -663,9 +659,8 @@
                 }
                 
                 // add the origin back onto the viewport
-                viewPort.origin.x -= round((_viewBox.origin.x)*_scale);
-                viewPort.origin.y -= round((_viewBox.origin.y)*_scale);
-                viewPort = CGRectIntegral(viewPort);
+                viewPort.origin.x -= (_viewBox.origin.x)*_scale;
+                viewPort.origin.y -= (_viewBox.origin.y)*_scale;
                 
                 // transforms
                 CGContextTranslateCTM( ref, viewPort.origin.x, viewPort.origin.y);
@@ -748,42 +743,6 @@
     
 }
 
-- (void)setFillColor:(NSColor *)aColor
-{
-    if(fillColor != nil) {
-        [fillColor release], fillColor = nil;
-    }
-    fillColor = [aColor retain];
-    [_layerTree release], _layerTree = nil;
-}
-
-- (void)setStrokeColor:(NSColor *)aColor
-{
-    if(strokeColor != nil) {
-        [strokeColor release], strokeColor = nil;
-    }
-    strokeColor = [aColor retain];
-    [_layerTree release], _layerTree = nil;
-}
-
-- (void)setStrokeWidth:(CGFloat)aWidth
-{
-    strokeWidth = aWidth;
-    [_layerTree release], _layerTree = nil;
-}
-
-- (void)setLineCapStyle:(IJSVGLineCapStyle)aLineCapStyle
-{
-    lineCapStyle = aLineCapStyle;
-    [_layerTree release], _layerTree = nil;
-}
-
-- (void)setLineJoinStyle:(IJSVGLineJoinStyle)aLineJoinStyle
-{
-    lineJoinStyle = aLineJoinStyle;
-    [_layerTree release], _layerTree = nil;
-}
-
 - (IJSVGLayer *)layerWithTree:(IJSVGLayerTree *)tree
 {
     // clear memory
@@ -808,40 +767,103 @@
     // from this SVG object
     IJSVGLayerTree * renderer = [[[IJSVGLayerTree alloc] init] autorelease];
     renderer.viewBox = self.viewBox;
-    renderer.fillColor = self.fillColor;
-    renderer.strokeColor = self.strokeColor;
-    renderer.strokeWidth = self.strokeWidth;
-    renderer.lineCapStyle = self.lineCapStyle;
-    renderer.lineJoinStyle = self.lineJoinStyle;
-    renderer.replacementColors = _replacementColors;
+    renderer.style = self.style;
     
     // return the rendered layer
     return [self layerWithTree:renderer];
 }
 
-- (NSArray<NSColor *> *)visibleColors
+- (void)setStyle:(IJSVGRenderingStyle *)style
 {
-    // set for the colors
-    NSMutableSet * colors = [[[NSMutableSet alloc] init] autorelease];
-    
-    // block to find colors in stroke and fill
+    [self removeStyleObservers];
+    [_style release], _style = nil;
+    _style = style.retain;
+    [self addStyleObservers];
+}
+
+- (void)removeStyleObservers
+{
+    for(NSString * propertyName in IJSVGRenderingStyle.observableProperties) {
+        @try {
+            [_style removeObserver:self
+                        forKeyPath:propertyName];
+        } @catch(NSException * e) {}
+    }
+}
+
+- (void)addStyleObservers
+{
+    for(NSString * propertyName in IJSVGRenderingStyle.observableProperties) {
+        [_style addObserver:self
+                 forKeyPath:propertyName
+                    options:0
+                    context:nil];
+    }
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary<NSKeyValueChangeKey,id> *)change
+                       context:(void *)context
+{
+    // invalidate the tree if a style is set
+    if(object == _style) {
+        [self invalidateLayerTree];
+    }
+}
+
+- (void)setNeedsDisplay
+{
+    [self invalidateLayerTree];
+}
+
+- (void)invalidateLayerTree
+{
+    [_layerTree release], _layerTree = nil;
+}
+
+- (IJSVGColorList *)computedColorList:(BOOL *)hasPatternFills
+{
+    IJSVGColorList * sheet = [[[IJSVGColorList alloc] init] autorelease];
     void (^block)(CALayer * layer, BOOL isMask) = ^void (CALayer * layer, BOOL isMask) {
         if([layer isKindOfClass:[IJSVGShapeLayer class]] && isMask == NO && layer.isHidden == NO) {
             IJSVGShapeLayer * sLayer = (IJSVGShapeLayer *)layer;
             NSColor * color = nil;
             if(sLayer.fillColor != nil) {
                 color = [NSColor colorWithCGColor:sLayer.fillColor];
-                color = [IJSVGColor computeColorSpace:color];
                 if(color.alphaComponent != 0.f) {
-                    [colors addObject:color];
+                    [sheet addColor:color];
                 }
             }
             if(sLayer.strokeColor != nil) {
                 color = [NSColor colorWithCGColor:sLayer.strokeColor];
                 color = [IJSVGColor computeColorSpace:color];
                 if(color.alphaComponent != 0.f) {
-                    [colors addObject:color];
+                    [sheet addColor:color];
                 }
+            }
+            
+            // check for any patterns
+            if(sLayer.patternFillLayer != nil ||
+               sLayer.gradientFillLayer != nil ||
+               sLayer.gradientStrokeLayer != nil ||
+               sLayer.patternStrokeLayer != nil) {
+                if(hasPatternFills != nil && *hasPatternFills != YES) {
+                    *hasPatternFills = YES;
+                }
+                
+                // add any colors from gradients
+                IJSVGGradientLayer * gradLayer = nil;
+                IJSVGGradientLayer * gradStrokeLayer = nil;
+                if((gradLayer = sLayer.gradientFillLayer) != nil) {
+                    IJSVGColorList * gradSheet = gradLayer.gradient.computedColorList;
+                    [sheet addColorsFromList:gradSheet];
+                }
+                if((gradStrokeLayer = sLayer.gradientStrokeLayer) != nil) {
+                    IJSVGColorList * gradSheet = gradStrokeLayer.gradient.computedColorList;
+                    [sheet addColorsFromList:gradSheet];
+                }
+                
             }
         }
     };
@@ -851,43 +873,7 @@
                            withBlock:block];
     
     // return the colours!
-    return colors.allObjects;
-}
-
-- (void)removeAllReplacementColors
-{
-    [_replacementColors release], _replacementColors = nil;
-}
-
-- (void)removeReplacementColor:(NSColor *)color
-{
-    if(_replacementColors == nil) {
-        return;
-    }
-    [_replacementColors removeObjectForKey:[IJSVGColor computeColorSpace:color]];
-}
-
-- (void)replaceColor:(NSColor *)color
-           withColor:(NSColor *)newColor
-{
-    if(_replacementColors == nil) {
-        _replacementColors = [[NSMutableDictionary alloc] init];
-    }
-    color = [IJSVGColor computeColorSpace:color];
-    newColor = [IJSVGColor computeColorSpace:newColor];
-    _replacementColors[color] = newColor;
-    [_layerTree release], _layerTree = nil;
-}
-
-- (void)setReplacementColors:(NSDictionary<NSColor *, NSColor *> *)colors
-{
-    if(_replacementColors != nil) {
-        [_replacementColors release], _replacementColors = nil;
-    }
-    for(NSColor * oldColor in colors) {
-        [self replaceColor:oldColor
-                 withColor:colors[oldColor]];
-    }
+    return sheet;
 }
 
 - (void)_beginDraw:(NSRect)rect

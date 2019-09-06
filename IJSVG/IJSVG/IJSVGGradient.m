@@ -12,6 +12,7 @@
 
 @synthesize gradient, CGGradient;
 @synthesize x1, x2, y1, y2;
+@synthesize colorList = _colorList;
 
 - (void)dealloc
 {
@@ -20,7 +21,8 @@
     [y1 release], y1 = nil;
     [y2 release], y2 = nil;
     [gradient release], gradient = nil;
-    if( CGGradient != nil ) {
+    [_colorList release], _colorList = nil;
+    if(CGGradient != nil) {
         CGGradientRelease(CGGradient);
     }
     [super dealloc];
@@ -31,6 +33,15 @@
     IJSVGGradient * clone = [super copyWithZone:zone];
     clone.gradient = [[self.gradient copy] autorelease];
     return clone;
+}
+
+- (void)setColorList:(IJSVGColorList *)list
+{
+    [_colorList release], _colorList = nil;
+    _colorList = list.retain;
+    if(CGGradient != nil) {
+        CGGradientRelease(CGGradient);
+    }
 }
 
 + (CGFloat *)computeColorStopsFromString:(NSXMLElement *)element
@@ -103,6 +114,20 @@
     return stopsParams;
 }
 
+- (IJSVGColorList *)computedColorList
+{
+    IJSVGColorList * sheet = [[[IJSVGColorList alloc] init] autorelease];
+    NSInteger num = self.gradient.numberOfColorStops;
+    for(NSInteger i = 0; i < num; i++) {
+        NSColor * color;
+        [self.gradient getColor:&color
+                       location:nil
+                        atIndex:i];
+        [sheet addColor:color];
+    }
+    return sheet;
+}
+
 - (CGGradientRef)CGGradient
 {
     // store it in the cache
@@ -113,15 +138,20 @@
     // actually create the gradient
     NSInteger num = self.gradient.numberOfColorStops;
     CGFloat * locations = malloc(sizeof(CGFloat)*num);
-    CFMutableArrayRef colors = CFArrayCreateMutable(kCFAllocatorDefault, (CFIndex)num, &kCFTypeArrayCallBacks);
+    CFMutableArrayRef colors = CFArrayCreateMutable(kCFAllocatorDefault, (CFIndex)num,
+                                                    &kCFTypeArrayCallBacks);
     for( NSInteger i = 0; i < num; i++ ) {
         NSColor * color;
         [self.gradient getColor:&color
                        location:&locations[i]
                         atIndex:i];
+        if(_colorList != nil) {
+            color = [_colorList proposedColorForColor:color];
+        }
         CFArrayAppendValue(colors, color.CGColor);
     }
-    CGGradientRef result = CGGradientCreateWithColors(self.gradient.colorSpace.CGColorSpace, colors, locations);
+    CGGradientRef result = CGGradientCreateWithColors(self.gradient.colorSpace.CGColorSpace,
+                                                      colors, locations);
     CFRelease(colors);
     free(locations);
     return CGGradient = result;
@@ -132,6 +162,18 @@
        absoluteTransform:(CGAffineTransform)absoluteTransform
                 viewPort:(CGRect)viewBox
 {
+}
+
+- (void)_debugStart:(CGPoint)startPoint
+                end:(CGPoint)endPoint
+            context:(CGContextRef)ctx
+{
+    CGContextSaveGState(ctx);
+    CGContextSetStrokeColorWithColor(ctx, NSColor.blackColor.CGColor);
+    CGContextSetLineWidth(ctx, 1.f);
+    CGContextMoveToPoint(ctx, startPoint.x, startPoint.y);
+    CGContextAddLineToPoint(ctx, endPoint.x, endPoint.y);
+    CGContextStrokePath(ctx);
 }
 
 @end

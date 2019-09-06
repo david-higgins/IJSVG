@@ -50,34 +50,31 @@
         NSString * str = [element attributeForName:key].stringValue;
         IJSVGUnitLength * unit = nil;
         if(str != nil) {
-            unit = [IJSVGUnitLength unitWithString:str];
+            unit = [IJSVGUnitLength unitWithString:str
+                                      fromUnitType:gradient.units];
         } else {
+            // spec says to say 50% for missing property default
             unit = [IJSVGUnitLength unitWithPercentageFloat:.5f];
         }
         [gradient setValue:unit
                     forKey:kv[key]];
     }
     
+    // fx and fy are the same unless specified otherwise
     gradient.fx = gradient.cx;
     gradient.fy = gradient.cy;
     
     // needs fixing
     NSString * fx = [element attributeForName:@"fx"].stringValue;
     if(fx != nil) {
-        if(fx.floatValue < 1.f) {
-            gradient.fx = [IJSVGUnitLength unitWithPercentageString:fx];
-        } else {
-            gradient.fx = [IJSVGUnitLength unitWithString:fx];
-        }
+        gradient.fx = [IJSVGUnitLength unitWithString:fx
+                                         fromUnitType:gradient.units];
     }
     
     NSString * fy = [element attributeForName:@"fy"].stringValue;
     if(fx != nil) {
-        if(fx.floatValue < 1.f) {
-            gradient.fy = [IJSVGUnitLength unitWithPercentageString:fy];
-        } else {
-            gradient.fy = [IJSVGUnitLength unitWithString:fy];
-        }
+        gradient.fy = [IJSVGUnitLength unitWithString:fy
+                                         fromUnitType:gradient.units];
     }
   
     if( gradient.gradient != nil ) {
@@ -144,7 +141,6 @@
         selfTransform = CGAffineTransformConcat(tr, selfTransform);
     }
 
-#pragma mark Default drawing
     // transform the context
     CGContextConcatCTM(ctx, selfTransform);
 
@@ -153,8 +149,15 @@
         kCGGradientDrawsBeforeStartLocation|
         kCGGradientDrawsAfterEndLocation;
     CGContextDrawRadialGradient(ctx, self.CGGradient,
-                                gradientEndPoint, 0, gradientStartPoint,
+                                gradientEndPoint, 0,
+                                gradientStartPoint,
                                 radius, options);
+    
+#ifdef IJSVG_DEBUG_GRADIENTS
+    [self _debugStart:gradientStartPoint
+                  end:gradientEndPoint
+              context:ctx];
+#endif
 }
 
 @end
