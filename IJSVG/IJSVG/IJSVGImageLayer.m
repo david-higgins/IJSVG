@@ -6,6 +6,7 @@
 //  Copyright © 2017 Curtis Hard. All rights reserved.
 //
 
+#import <Cocoa/Cocoa.h>
 #import "IJSVGImageLayer.h"
 
 @implementation IJSVGImageLayer

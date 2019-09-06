@@ -6,6 +6,7 @@
 //  Copyright © 2017 Curtis Hard. All rights reserved.
 //
 
+#import <QuartzCore/QuartzCore.h>
 #import "IJSVGTransaction.h"
 
 void IJSVGBeginTransactionLock() {
